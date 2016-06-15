@@ -7,7 +7,7 @@ from webscraping import xpath
 from decimal import Decimal
 import ConfigParser
 import requests
-
+import datetime
 
 class Money:
     def __init__(self):
@@ -101,7 +101,10 @@ class Money:
             print "{} {}".format(site, m)
             num = m.replace("$","")
             total += Decimal(num)
-        print "total ${}".format(total) 
+        now = datetime.datetime.now()
+        print "total: ${}".format(total) 
+        print now
+
 
 if __name__ == "__main__":
     m = Money()
