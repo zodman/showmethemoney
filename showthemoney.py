@@ -6,6 +6,8 @@ import mechanize
 from webscraping import xpath
 from decimal import Decimal
 import ConfigParser
+import requests
+
 
 class Money:
     def __init__(self):
@@ -73,6 +75,23 @@ class Money:
         doc = xpath.Doc(res)
         t = doc.search("//div[@class='user_content']/text()")[0]
         return t.strip().split(" ")[-2]
+    
+     def shorte(self):
+        br = self.br
+        br.open("https://shorte.st/es/login")
+        u, p = self._get_auth("shorte")
+        br.form = list(br.forms())[1]
+        br.form["_username"]=u
+        br.form["_password"]=p
+        br.submit()
+        res = br.response().read()
+        doc = xpath.Doc(res)
+        return doc.get("//a[@class='total-income']")
+
+    def popads(self):
+        key = self.cfg.get("popads", "api_key")
+        res = requests.get("https://www.popads.net/api/user_status?key={}".format(key))
+        return "${}".format(res.json()["user"]["balance"])
 
     def show_all(self):
         total = 0
