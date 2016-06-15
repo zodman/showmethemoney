@@ -75,8 +75,8 @@ class Money:
         doc = xpath.Doc(res)
         t = doc.search("//div[@class='user_content']/text()")[0]
         return t.strip().split(" ")[-2]
-    
-     def shorte(self):
+
+    def shorte(self):
         br = self.br
         br.open("https://shorte.st/es/login")
         u, p = self._get_auth("shorte")
