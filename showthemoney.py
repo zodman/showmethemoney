@@ -10,6 +10,9 @@ import requests
 import datetime
 
 class Money:
+
+    sites = ("ouo", "adfly", "shink", "bcvc","shorte","popads")
+
     def __init__(self):
         br = mechanize.Browser()
         br.set_handle_robots(False)   # ignore robots
@@ -24,11 +27,13 @@ class Money:
         user = self.cfg.get(section, "user")
         psw  = self.cfg.get(section, "pass")
         return user, psw
+
     def ouo(self):
         br = self.br
         br.open("http://ouo.io/auth/signin/")
         br.form = list(br.forms())[0]
         user, pswd = self._get_auth('ouo')
+        print user, pswd
         br.form["username"]=user
         br.form["password"]=pswd
         br.submit()
@@ -95,7 +100,7 @@ class Money:
 
     def show_all(self):
         total = 0
-        for site in ("ouo", "adfly", "shink", "bcvc","shorte","popads"):
+        for site in self.sites:
             v = getattr(self,site)
             m = v()
             print "{} {}".format(site, m)
@@ -107,19 +112,36 @@ class Money:
 
     def store(self):
         import dumper as pydumper 
-        import os 
 
-        for site in ("ouo", "adfly", "shink", "bcvc","shorte","popads"):
-            v = getattr(self,site)
+        now = datetime.datetime.now()
+        for site in self.sites:
+            v = getattr(self, site)
             m = v()
             print "{} {}".format(site, m)
             num = m.replace("$","")
-            if not os.path.exists("{}.dat".format(site)):
-                pydumper.dump([],site)
-            site_list = pydumper.load(site) 
-            now = datetime.datetime.now()
+            site_list = pydumper.load(site,silent=True) or []
             site_list.append({'site':site,'datetime':now,'total':num})
 
+    def graph(self):
+        import plotly.plotly as py
+        import plotly.graph_objs as go
+        import dumper
+        data = []
+        for site in self.sites:
+            site_list = dumper.load(site)
+            x = [i['datetime'] for i in site_list]
+            y = [i["total"] for i in site_list]
+            data.append(go.Scatter(x=x, y=y, name=site))
+
+        print py.plot(data,filename="neko",sharing="secret",fileopt="overwrite",auto_open=False)
+
+
 if __name__ == "__main__":
+    import sys
     m = Money()
-    m.store()
+    if "store" in sys.argv[1:]:
+        m.store()
+    elif "graph" in sys.argv[1:]:
+        m.graph()
+    else:
+        m.show_all()

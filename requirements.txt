@@ -1,2 +1,4 @@
 mechanize
 webscraping
+pydumper
+plotly
