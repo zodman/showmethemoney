@@ -89,23 +89,37 @@ class Money:
         return doc.get("//a[@class='total-income']")
 
     def popads(self):
-        key = self.cfg.get("popads", "api_key")
+        key = self.cfg.get("popads", "key_api")
         res = requests.get("https://www.popads.net/api/user_status?key={}".format(key))
         return "${}".format(res.json()["user"]["balance"])
 
     def show_all(self):
         total = 0
-        for site in ("ouo", "adfly", "shink", "bcvc"):
+        for site in ("ouo", "adfly", "shink", "bcvc","shorte","popads"):
             v = getattr(self,site)
             m = v()
             print "{} {}".format(site, m)
             num = m.replace("$","")
             total += Decimal(num)
-        now = datetime.datetime.now()
         print "total: ${}".format(total) 
+        now = datetime.datetime.now()
         print now
 
+    def store(self):
+        import dumper as pydumper 
+        import os 
+
+        for site in ("ouo", "adfly", "shink", "bcvc","shorte","popads"):
+            v = getattr(self,site)
+            m = v()
+            print "{} {}".format(site, m)
+            num = m.replace("$","")
+            if not os.path.exists("{}.dat".format(site)):
+                pydumper.dump([],site)
+            site_list = pydumper.load(site) 
+            now = datetime.datetime.now()
+            site_list.append({'site':site,'datetime':now,'total':num})
 
 if __name__ == "__main__":
     m = Money()
-    m.show_all()
+    m.store()
