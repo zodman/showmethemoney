@@ -9,12 +9,15 @@ import ConfigParser
 import requests
 import datetime
 import os
+import plotly.plotly as py
+import plotly.graph_objs as go
+import dumper
 
 BASE_DIR=os.path.dirname(os.path.realpath(__file__))
 
 
 class Money:
-
+    limit = 5
     sites = ("ouo", "adfly", "shink", "bcvc","shorte","popads","publited")
 
     def __init__(self):
@@ -68,8 +71,8 @@ class Money:
         br.open("http://panel.shink.in/")
         res = br.response().read()
         doc = xpath.Doc(res)
-        res = doc.search("//span[@class='h3 text-success font-bold']")
-        return res[0]
+        res = doc.search("//span[@class='h3 text-success font-bold']")[0]
+        return res
 
     def bcvc(self):
         br = self.br
@@ -115,16 +118,15 @@ class Money:
         print now
 
     def store(self):
-        import dumper as pydumper 
 
         now = datetime.datetime.now()
         for site in self.sites:
             v = getattr(self, site)
             m = v()
             num = m.replace("$","")
-            site_list = pydumper.load(site,silent=True, path=BASE_DIR) or []
+            site_list = dumper.load(site,silent=True, path=BASE_DIR) or []
             site_list.append({'site':site,'datetime':now,'total':num})
-            pydumper.dump(site_list, site, path=BASE_DIR)
+            dumper.dump(site_list, site, path=BASE_DIR)
         print "store file {}".format(now)
 
     def publited(self):
@@ -141,19 +143,33 @@ class Money:
         number = f[3].replace(",",".").split(" ")[0]
         return "$ {}".format(number)
 
+    def graph_site(self,site):
+        x,y,data = [],[],[]
+        site_list = dumper.load(site, path=BASE_DIR)
+        y_old = float(site_list[0]["total"])
+        for i in site_list:
+            t = float(i["total"])- y_old
+            y_old = float(i["total"])
+            if t != 0:
+                x.append(i['datetime'])
+                y.append(t)
+        data.append(go.Scatter(x=x, y=y, name=site))
+        l = dict(layout={'title':site},data=data)
+        print py.plot(l,filename=site,fileopt="overwrite",auto_open=False)
+
+    def graph_all(self):
+        for site in self.sites:
+            self.graph_site(site)
 
     def graph(self):
-        import plotly.plotly as py
-        import plotly.graph_objs as go
-        import dumper
         data = []
         for site in self.sites:
             site_list = dumper.load(site, path=BASE_DIR)
             x = [i['datetime'] for i in site_list]
             y = [i["total"] for i in site_list]
             data.append(go.Scatter(x=x, y=y, name=site))
-        data.append(go.Scatter(y=[5 for i in range(0,len(x))],x=x, name="limit"))
-        print py.plot(data,filename="neko",sharing="secret",fileopt="overwrite",auto_open=False)
+        data.append(go.Scatter(y=[self.limit for i in range(0,len(x))],x=x, name="limit"))
+        print py.plot(dict(data=data,layout={'title':'Total'}),filename="neko",sharing="secret",fileopt="overwrite",auto_open=False)
 
 
 if __name__ == "__main__":
@@ -161,7 +177,9 @@ if __name__ == "__main__":
     m = Money()
     if "store" in sys.argv[1:]:
         m.store()
-    elif "graph" in sys.argv[1:]:
+    elif "graph" in  sys.argv[1:]:
         m.graph()
+    elif "dashboard" in sys.argv[1:]:
+        m.graph_all()
     else:
         m.show_all()
