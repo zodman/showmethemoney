@@ -8,10 +8,14 @@ from decimal import Decimal
 import ConfigParser
 import requests
 import datetime
+import os
+
+BASE_DIR=os.path.dirname(os.path.realpath(__file__))
+
 
 class Money:
 
-    sites = ("ouo", "adfly", "shink", "bcvc","shorte","popads")
+    sites = ("ouo", "adfly", "shink", "bcvc","shorte","popads","publited")
 
     def __init__(self):
         br = mechanize.Browser()
@@ -21,7 +25,7 @@ class Money:
         br.addheaders = [('User-Agent', ua), ('Accept', '*/*')]
         self.br = br
         self.cfg = ConfigParser.ConfigParser()
-        self.cfg.read("config.ini")
+        self.cfg.read( os.path.join(BASE_DIR,"config.ini"))
 
     def _get_auth(self,section):
         user = self.cfg.get(section, "user")
@@ -33,7 +37,6 @@ class Money:
         br.open("http://ouo.io/auth/signin/")
         br.form = list(br.forms())[0]
         user, pswd = self._get_auth('ouo')
-        print user, pswd
         br.form["username"]=user
         br.form["password"]=pswd
         br.submit()
@@ -65,7 +68,8 @@ class Money:
         br.open("http://panel.shink.in/")
         res = br.response().read()
         doc = xpath.Doc(res)
-        return doc.search("//span[@class='h3 text-danger font-bold']")[1]
+        res = doc.search("//span[@class='h3 text-success font-bold']")
+        return res[0]
 
     def bcvc(self):
         br = self.br
@@ -117,10 +121,26 @@ class Money:
         for site in self.sites:
             v = getattr(self, site)
             m = v()
-            print "{} {}".format(site, m)
             num = m.replace("$","")
-            site_list = pydumper.load(site,silent=True) or []
+            site_list = pydumper.load(site,silent=True, path=BASE_DIR) or []
             site_list.append({'site':site,'datetime':now,'total':num})
+            pydumper.dump(site_list, site, path=BASE_DIR)
+        print "store file {}".format(now)
+
+    def publited(self):
+        br = self.br
+        br.open("http://www.publited.com/en/login")
+        u, p = self._get_auth("publited")
+        br.form = list(br.forms())[0]
+        br.form["data[User][email]"]=u
+        br.form["data[User][password]"]=p
+        br.submit()
+        res = br.response().read()
+        doc = xpath.Doc(res)
+        f =  doc.search("//dd[@class='em-price text-green']/a/text()")
+        number = f[3].replace(",",".").split(" ")[0]
+        return "$ {}".format(number)
+
 
     def graph(self):
         import plotly.plotly as py
@@ -128,11 +148,11 @@ class Money:
         import dumper
         data = []
         for site in self.sites:
-            site_list = dumper.load(site)
+            site_list = dumper.load(site, path=BASE_DIR)
             x = [i['datetime'] for i in site_list]
             y = [i["total"] for i in site_list]
             data.append(go.Scatter(x=x, y=y, name=site))
-
+        data.append(go.Scatter(y=[5 for i in range(0,len(x))],x=x, name="limit"))
         print py.plot(data,filename="neko",sharing="secret",fileopt="overwrite",auto_open=False)
 
 
