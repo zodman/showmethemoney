@@ -180,13 +180,17 @@ class Money:
                 data[wk] += total
                 old_t = data[wk]
         g = [go.Scatter(x=data.keys(), y=data.values())]
-        py.plot(dict(data=g, layout={"title":"Growth"}),filename="nekototal",fileopt="overwrite",auto_open=False)
+        py.plot(dict(data=g, layout={"title":"Growth",
+                'xaxis':{'title':"Week number"},
+                'yaxis':{'title':"Money"}
+
+            }),filename="nekototal",fileopt="overwrite",auto_open=False)
     def graph_pie(self):
         results, total = self.show_all()
-        labels = [i[0] for i in results]
+        labels = ["%s $ %s" % i for i in results]
         values = [i[1].replace("$","") for i in results]
         g = [go.Pie(labels=labels, values=values)]
-        py.plot(dict(data=g, layout={"title":"Growth"}),filename="nekototalpie",fileopt="overwrite",auto_open=False)
+        py.plot(dict(data=g, layout={"title":"Earn Percent %s" % total}),filename="nekototalpie",fileopt="overwrite",auto_open=False)
        
     def graph(self):
         data = []
@@ -196,7 +200,11 @@ class Money:
             y = [i["total"] for i in site_list]
             data.append(go.Scatter(x=x, y=y, name=site))
         data.append(go.Scatter(y=[self.limit for i in range(0,len(x))],x=x, name="limit"))
-        py.plot(dict(data=data,layout={'title':'Total'}),filename="neko",sharing="secret",fileopt="overwrite",auto_open=False)
+        opts = dict(data=data,layout={'title':'Total earns', 
+                'xaxis':{'title':"Timeline"},
+                'yaxis':{'title':"Money"}
+        })
+        py.plot(opts,filename="neko",sharing="secret",fileopt="overwrite",auto_open=False)
 
 
 if __name__ == "__main__":
