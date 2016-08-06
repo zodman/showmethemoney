@@ -18,7 +18,7 @@ BASE_DIR=os.path.dirname(os.path.realpath(__file__))
 
 class Money:
     limit = 5
-    sites = ("ouo", "adfly", "shink", "bcvc","shorte","popads","publited")
+    sites = ("ouo", "adfly",  "bcvc","shorte","popads","publited")
 
     def __init__(self):
         br = mechanize.Browser()
@@ -37,7 +37,7 @@ class Money:
 
     def ouo(self):
         br = self.br
-        br.open("http://ouo.io/auth/signin/")
+        br.open("http://ouo.press/auth/signin/")
         br.form = list(br.forms())[0]
         user, pswd = self._get_auth('ouo')
         br.form["username"]=user
@@ -70,8 +70,10 @@ class Money:
         br.submit()
         br.open("http://panel.shink.in/")
         res = br.response().read()
+        print res
         doc = xpath.Doc(res)
-        res = doc.search("//span[@class='h3 text-success font-bold']")[0]
+        res = doc.search("//span[@class='h3 text-success font-bold']")
+        print res
         return res
 
     def bcvc(self):
@@ -107,18 +109,20 @@ class Money:
 
     def show_all(self):
         total = 0
+        results = []
         for site in self.sites:
             v = getattr(self,site)
             m = v()
             print "{} {}".format(site, m)
+            results.append((site, m))
             num = m.replace("$","")
             total += Decimal(num)
         print "total: ${}".format(total) 
         now = datetime.datetime.now()
         print now
+        return results, total
 
     def store(self):
-
         now = datetime.datetime.now()
         for site in self.sites:
             v = getattr(self, site)
@@ -155,12 +159,35 @@ class Money:
                 y.append(t)
         data.append(go.Scatter(x=x, y=y, name=site))
         l = dict(layout={'title':site},data=data)
-        print py.plot(l,filename=site,fileopt="overwrite",auto_open=False)
+        print (site, py.plot(l,filename=site,fileopt="overwrite",auto_open=False))
 
     def graph_all(self):
         for site in self.sites:
             self.graph_site(site)
 
+    def graph_total(self):
+        data = {}
+        old_t = 0
+        for site in self.sites:
+            site_list = dumper.load(site, path=BASE_DIR)
+            for i in site_list:
+                wk = i["datetime"].isocalendar()[1]
+                data.setdefault(wk,0)
+                total  = i["total"].strip()
+                if total == "":
+                    total = 0
+                total = float(total)  - old_t
+                data[wk] += total
+                old_t = data[wk]
+        g = [go.Scatter(x=data.keys(), y=data.values())]
+        py.plot(dict(data=g, layout={"title":"Growth"}),filename="nekototal",fileopt="overwrite",auto_open=False)
+    def graph_pie(self):
+        results, total = self.show_all()
+        labels = [i[0] for i in results]
+        values = [i[1].replace("$","") for i in results]
+        g = [go.Pie(labels=labels, values=values)]
+        py.plot(dict(data=g, layout={"title":"Growth"}),filename="nekototalpie",fileopt="overwrite",auto_open=False)
+       
     def graph(self):
         data = []
         for site in self.sites:
@@ -169,7 +196,7 @@ class Money:
             y = [i["total"] for i in site_list]
             data.append(go.Scatter(x=x, y=y, name=site))
         data.append(go.Scatter(y=[self.limit for i in range(0,len(x))],x=x, name="limit"))
-        print py.plot(dict(data=data,layout={'title':'Total'}),filename="neko",sharing="secret",fileopt="overwrite",auto_open=False)
+        py.plot(dict(data=data,layout={'title':'Total'}),filename="neko",sharing="secret",fileopt="overwrite",auto_open=False)
 
 
 if __name__ == "__main__":
@@ -178,7 +205,9 @@ if __name__ == "__main__":
     if "store" in sys.argv[1:]:
         m.store()
     elif "graph" in  sys.argv[1:]:
+        m.graph_pie()
         m.graph()
+        m.graph_total()
     elif "dashboard" in sys.argv[1:]:
         m.graph_all()
     else:
