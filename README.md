@@ -12,4 +12,4 @@ For getting works only write the user/pass on config.ini file.
 
 here a example of the graphics
 
-!(graph)[http://i.imgur.com/U7xD85p.png]
+![graph](http://i.imgur.com/U7xD85p.png)
