@@ -12,7 +12,7 @@ import os
 import plotly.plotly as py
 import plotly.graph_objs as go
 import dumper
-
+import q
 BASE_DIR=os.path.dirname(os.path.realpath(__file__))
 
 
@@ -124,13 +124,18 @@ class Money:
 
     def store(self):
         now = datetime.datetime.now()
+        total = 0
         for site in self.sites:
             v = getattr(self, site)
             m = v()
             num = m.replace("$","")
+            total += Decimal(num)
             site_list = dumper.load(site,silent=True, path=BASE_DIR) or []
             site_list.append({'site':site,'datetime':now,'total':num})
             dumper.dump(site_list, site, path=BASE_DIR)
+        total_list = dumper.load('total', silent=True, path=BASE_DIR) or []
+        total_list.append({'site':total, 'datetime':now, 'total':total})
+        dumper.dump(total_list, "total", path=BASE_DIR)
         print "store file {}".format(now)
 
     def publited(self):
@@ -166,31 +171,21 @@ class Money:
             self.graph_site(site)
 
     def graph_total(self):
-        data = {}
-        old_t = 0
-        for site in self.sites:
-            site_list = dumper.load(site, path=BASE_DIR)
-            for i in site_list:
-                wk = i["datetime"].isocalendar()[1]
-                data.setdefault(wk,0)
-                total  = i["total"].strip()
-                if total == "":
-                    total = 0
-                total = float(total)  - old_t
-                data[wk] += total
-                old_t = data[wk]
-        g = [go.Scatter(x=data.keys(), y=data.values())]
+        data = dumper.load("total", path=BASE_DIR)
+        days = [x["datetime"] for x in data]
+        values = ["%s" % x["total"] for x in data]
+        g = [go.Scatter(x=days, y=values)]
         py.plot(dict(data=g, layout={"title":"Growth",
-                'xaxis':{'title':"Week number"},
+                'xaxis':{'title':"Year days"},
                 'yaxis':{'title':"Money"}
-
             }),filename="nekototal",fileopt="overwrite",auto_open=False)
+
     def graph_pie(self):
         results, total = self.show_all()
-        labels = ["%s $ %s" % i for i in results]
+        labels = ["%s %s" % i for i in results]
         values = [i[1].replace("$","") for i in results]
         g = [go.Pie(labels=labels, values=values)]
-        py.plot(dict(data=g, layout={"title":"Earn Percent %s" % total}),filename="nekototalpie",fileopt="overwrite",auto_open=False)
+        py.plot(dict(data=g, layout={"title":"Earn Percent $ %s" % total}),filename="nekototalpie",fileopt="overwrite",auto_open=False)
        
     def graph(self):
         data = []
@@ -204,7 +199,7 @@ class Money:
                 'xaxis':{'title':"Timeline"},
                 'yaxis':{'title':"Money"}
         })
-        py.plot(opts,filename="neko",sharing="secret",fileopt="overwrite",auto_open=False)
+        py.plot(opts,filename="neko",fileopt="overwrite",auto_open=False)
 
 
 if __name__ == "__main__":
